@@ -6,78 +6,281 @@
     <title>DQW AutoBattle Dashboard</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: sans-serif; background: #1a1a2e; color: #eee; padding: 20px; }
-        h1 { margin-bottom: 20px; color: #e94560; }
-        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
-        .card { background: #16213e; border-radius: 8px; padding: 20px; }
-        .card h2 { font-size: 1rem; color: #0f3460; margin-bottom: 10px; }
-        #status { font-size: 1.5rem; font-weight: bold; color: #e94560; }
+        body { font-family: 'Segoe UI', sans-serif; background: #0f0f1a; color: #e0e0e0; padding: 20px; }
+        h1 { margin-bottom: 20px; color: #e94560; font-size: 1.6rem; }
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; max-width: 1200px; }
+        .card { background: #1a1a2e; border-radius: 8px; padding: 18px; border: 1px solid #2a2a40; }
+        .card h2 { font-size: 0.85rem; color: #888; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 12px; }
+
+        /* State display */
+        #state-display { font-size: 2.2rem; font-weight: bold; color: #e94560; margin-bottom: 12px; }
+        .state-running { color: #4caf50 !important; }
+        .state-error { color: #f44336 !important; }
+
+        /* Stats */
+        .stats { display: flex; gap: 24px; }
+        .stat-item { text-align: center; }
+        .stat-value { font-size: 1.5rem; font-weight: bold; color: #fff; }
+        .stat-label { font-size: 0.75rem; color: #888; }
+
+        /* Controls */
+        .controls { display: flex; gap: 10px; align-items: flex-start; flex-wrap: wrap; }
         .controls button {
-            padding: 10px 20px; margin: 5px; border: none; border-radius: 4px;
-            cursor: pointer; font-size: 1rem; color: #fff;
+            padding: 10px 28px; border: none; border-radius: 4px;
+            cursor: pointer; font-size: 0.95rem; color: #fff; font-weight: 600;
+            transition: opacity 0.2s;
         }
-        .controls .start { background: #4caf50; }
-        .controls .stop { background: #f44336; }
+        .controls button:hover { opacity: 0.85; }
+        .btn-start { background: #4caf50; }
+        .btn-stop { background: #f44336; }
+
+        /* Log */
         #log {
-            background: #0a0a1a; border-radius: 4px; padding: 10px;
-            height: 300px; overflow-y: auto; font-family: monospace; font-size: 0.85rem;
+            background: #0a0a14; border-radius: 4px; padding: 10px;
+            height: 280px; overflow-y: auto; font-family: 'Consolas', monospace;
+            font-size: 0.8rem; line-height: 1.5; color: #aaa;
         }
-        .stats span { display: inline-block; margin-right: 20px; }
+        #log .log-line { padding: 1px 0; }
+        #log .log-error { color: #f44336; }
+        #log .log-warn { color: #ff9800; }
+
+        /* Preview */
+        #preview-container { text-align: center; min-height: 120px; }
+        #preview-img { max-width: 100%; max-height: 300px; border-radius: 4px; border: 1px solid #2a2a40; display: none; }
+        .no-preview { color: #555; font-style: italic; padding: 40px 0; }
+
+        /* Config form */
+        .config-section { max-height: 260px; overflow-y: auto; }
+        .config-row { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+        .config-row label { flex: 0 0 200px; font-size: 0.82rem; color: #aaa; word-break: break-all; }
+        .config-row input {
+            flex: 1; background: #0a0a14; border: 1px solid #333; border-radius: 3px;
+            color: #e0e0e0; padding: 4px 8px; font-size: 0.82rem;
+        }
+        .btn-save-config {
+            margin-top: 10px; padding: 6px 18px; background: #0f3460; border: none;
+            border-radius: 3px; color: #fff; cursor: pointer; font-size: 0.85rem;
+        }
+        .btn-save-config:hover { background: #1a4a80; }
+
+        .full-width { grid-column: 1 / -1; }
     </style>
 </head>
 <body>
     <h1>DQW AutoBattle Dashboard</h1>
     <div class="grid">
+        <!-- State & Stats -->
         <div class="card">
-            <h2>System Status</h2>
-            <div id="status">IDLE</div>
+            <h2>System State</h2>
+            <div id="state-display">IDLE</div>
             <div class="stats">
-                <span>Battles: <strong id="battles">0</strong></span>
-                <span>Errors: <strong id="errors">0</strong></span>
-                <span>Uptime: <strong id="uptime">00:00:00</strong></span>
+                <div class="stat-item">
+                    <div class="stat-value" id="battles">0</div>
+                    <div class="stat-label">Battles</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value" id="errors">0</div>
+                    <div class="stat-label">Errors</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value" id="uptime">00:00:00</div>
+                    <div class="stat-label">Uptime</div>
+                </div>
             </div>
         </div>
-        <div class="card controls">
+
+        <!-- Controls -->
+        <div class="card">
             <h2>Controls</h2>
-            <button class="start" onclick="startSystem()">Start</button>
-            <button class="stop" onclick="stopSystem()">Stop</button>
+            <div class="controls">
+                <button class="btn-start" onclick="startSystem()">Start</button>
+                <button class="btn-stop" onclick="stopSystem()">Stop</button>
+            </div>
         </div>
-        <div class="card" style="grid-column: 1 / -1;">
+
+        <!-- Preview -->
+        <div class="card">
+            <h2>Capture Preview</h2>
+            <div id="preview-container">
+                <img id="preview-img" alt="preview">
+                <div class="no-preview" id="no-preview">No capture available</div>
+            </div>
+        </div>
+
+        <!-- Config -->
+        <div class="card">
+            <h2>Configuration</h2>
+            <div class="config-section" id="config-section"></div>
+            <button class="btn-save-config" onclick="saveConfig()">Save</button>
+        </div>
+
+        <!-- Logs -->
+        <div class="card full-width">
             <h2>Log Stream</h2>
             <div id="log"></div>
         </div>
     </div>
-    <script>
-        const logEl = document.getElementById("log");
-        const statusEl = document.getElementById("status");
-        let ws;
 
-        function connectWs() {
-            ws = new WebSocket(`ws://${location.host}/ws`);
-            ws.onmessage = (event) => {
-                const data = JSON.parse(event.data);
-                if (data.type === "log") {
-                    const line = document.createElement("div");
-                    line.textContent = data.message;
-                    logEl.appendChild(line);
-                    logEl.scrollTop = logEl.scrollHeight;
-                }
-                if (data.state) {
-                    statusEl.textContent = data.state;
-                }
-            };
-            ws.onclose = () => setTimeout(connectWs, 3000);
+    <script>
+        const stateEl = document.getElementById("state-display");
+        const battlesEl = document.getElementById("battles");
+        const errorsEl = document.getElementById("errors");
+        const uptimeEl = document.getElementById("uptime");
+        const logEl = document.getElementById("log");
+        const previewImg = document.getElementById("preview-img");
+        const noPreview = document.getElementById("no-preview");
+        const configSection = document.getElementById("config-section");
+
+        let statusTimer = null;
+
+        // ---- Formatting ----
+        function fmtTime(sec) {
+            const h = Math.floor(sec / 3600);
+            const m = Math.floor((sec % 3600) / 60);
+            const s = Math.floor(sec % 60);
+            return [h, m, s].map(v => String(v).padStart(2, "0")).join(":");
         }
 
+        // ---- REST calls ----
         async function startSystem() {
             await fetch("/api/start", { method: "POST" });
+            refreshStatus();
         }
 
         async function stopSystem() {
             await fetch("/api/stop", { method: "POST" });
+            refreshStatus();
         }
 
-        connectWs();
+        async function refreshStatus() {
+            try {
+                const res = await fetch("/api/status");
+                const data = await res.json();
+                stateEl.textContent = data.state;
+                stateEl.className = "";
+                if (data.running) stateEl.classList.add("state-running");
+                if (data.state === "ERROR") stateEl.classList.add("state-error");
+                battlesEl.textContent = data.battle_count;
+                errorsEl.textContent = data.error_count;
+                uptimeEl.textContent = fmtTime(data.uptime_seconds);
+            } catch (e) { /* ignore */ }
+        }
+
+        async function loadConfig() {
+            try {
+                const res = await fetch("/api/config");
+                const cfg = await res.json();
+                renderConfig(cfg);
+            } catch (e) { /* ignore */ }
+        }
+
+        function renderConfig(obj, prefix) {
+            prefix = prefix || "";
+            configSection.innerHTML = "";
+            const flat = flattenObj(obj);
+            for (const [key, val] of Object.entries(flat)) {
+                const row = document.createElement("div");
+                row.className = "config-row";
+                row.innerHTML = `<label>${key}</label><input data-key="${key}" value="${val === null ? '' : val}">`;
+                configSection.appendChild(row);
+            }
+        }
+
+        function flattenObj(obj, prefix, result) {
+            prefix = prefix || "";
+            result = result || {};
+            for (const [k, v] of Object.entries(obj)) {
+                const key = prefix ? prefix + "." + k : k;
+                if (v !== null && typeof v === "object" && !Array.isArray(v)) {
+                    flattenObj(v, key, result);
+                } else {
+                    result[key] = v;
+                }
+            }
+            return result;
+        }
+
+        function unflattenObj(flat) {
+            const result = {};
+            for (const [key, val] of Object.entries(flat)) {
+                const parts = key.split(".");
+                let cur = result;
+                for (let i = 0; i < parts.length - 1; i++) {
+                    if (!(parts[i] in cur)) cur[parts[i]] = {};
+                    cur = cur[parts[i]];
+                }
+                // try to parse numbers/booleans
+                let parsed = val;
+                if (val === "true") parsed = true;
+                else if (val === "false") parsed = false;
+                else if (val === "null" || val === "") parsed = null;
+                else if (!isNaN(Number(val)) && val !== "") parsed = Number(val);
+                cur[parts[parts.length - 1]] = parsed;
+            }
+            return result;
+        }
+
+        async function saveConfig() {
+            const inputs = configSection.querySelectorAll("input[data-key]");
+            const flat = {};
+            inputs.forEach(inp => { flat[inp.dataset.key] = inp.value; });
+            const cfg = unflattenObj(flat);
+            await fetch("/api/config", {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(cfg)
+            });
+            loadConfig();
+        }
+
+        // ---- WebSocket connections ----
+        function connectWs(path, onMessage) {
+            const ws = new WebSocket(`ws://${location.host}${path}`);
+            ws.onmessage = onMessage;
+            ws.onclose = () => setTimeout(() => connectWs(path, onMessage), 3000);
+            return ws;
+        }
+
+        // Logs
+        connectWs("/ws/logs", (event) => {
+            const data = JSON.parse(event.data);
+            const line = document.createElement("div");
+            line.className = "log-line";
+            const msg = data.message || JSON.stringify(data);
+            if (msg.includes("ERROR")) line.classList.add("log-error");
+            else if (msg.includes("WARN")) line.classList.add("log-warn");
+            line.textContent = msg;
+            logEl.appendChild(line);
+            // Keep max 500 lines
+            while (logEl.children.length > 500) logEl.removeChild(logEl.firstChild);
+            logEl.scrollTop = logEl.scrollHeight;
+        });
+
+        // State
+        connectWs("/ws/state", (event) => {
+            const data = JSON.parse(event.data);
+            if (data.state) {
+                stateEl.textContent = data.state;
+                stateEl.className = "";
+                if (data.state !== "IDLE" && data.state !== "ERROR") stateEl.classList.add("state-running");
+                if (data.state === "ERROR") stateEl.classList.add("state-error");
+            }
+        });
+
+        // Preview
+        connectWs("/ws/preview", (event) => {
+            const data = JSON.parse(event.data);
+            if (data.image) {
+                previewImg.src = "data:image/png;base64," + data.image;
+                previewImg.style.display = "block";
+                noPreview.style.display = "none";
+            }
+        });
+
+        // ---- Init ----
+        refreshStatus();
+        loadConfig();
+        statusTimer = setInterval(refreshStatus, 5000);
     </script>
 </body>
 </html>

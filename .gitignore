@@ -33,6 +33,13 @@ Thumbs.db
 .env
 *.env
 
+# Debug / temporary images (root level)
+*.png
+!templates/*.png
+
+# scrcpy binary bundle (large)
+scrcpy/
+
 # mypy
 .mypy_cache/
 

@@ -1,7 +1,7 @@
 # DQW AutoBattle System Configuration
 
 device:
-  serial: null                    # ADB デバイスシリアル（null でデフォルト）
+  serial: "38241FDJH0008S"        # Pixel 8 ADB シリアル
   resolution:
     width: 1080
     height: 2400
@@ -13,7 +13,7 @@ capture:
   retry_delay: 0.5                # リトライ間隔（秒）
 
 recognition:
-  threshold: 0.80                 # テンプレートマッチング閾値
+  threshold: 0.65                 # テンプレートマッチング閾値（吹き出し!マーク用に調整）
   template_dir: "templates/"
   templates:
     walk_mode_on: "walk_mode_on.png"
