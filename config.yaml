@@ -1,0 +1,51 @@
+# DQW AutoBattle System Configuration
+
+device:
+  serial: null                    # ADB デバイスシリアル（null でデフォルト）
+  resolution:
+    width: 1080
+    height: 2400
+
+capture:
+  method: "adb_screencap"        # adb_screencap | window_capture
+  interval_ms: 500                # キャプチャ間隔（500〜1000ms で状態に応じて可変）
+  retry_count: 3                  # screencap 失敗時のリトライ回数
+  retry_delay: 0.5                # リトライ間隔（秒）
+
+recognition:
+  threshold: 0.80                 # テンプレートマッチング閾値
+  template_dir: "templates/"
+  templates:
+    walk_mode_on: "walk_mode_on.png"
+    walk_mode_off: "walk_mode_off.png"
+    enemy_symbol: "enemy_symbol_*.png"
+    ok_button: "ok_button.png"
+    close_button: "close_button.png"
+    battle_screen: "battle_screen.png"
+    result_screen: "result_screen.png"
+
+control:
+  tap_cooldown_ms: 300            # タップ間の最小間隔
+  scroll:
+    x1: 540                       # スワイプ開始 X（画面中央）
+    y1: 1500                      # スワイプ開始 Y
+    x2: 540                       # スワイプ終了 X
+    y2: 900                       # スワイプ終了 Y
+    duration_ms: 2000             # スクロール時間
+
+engine:
+  max_scroll_retry: 10            # シンボル未発見時の最大スクロール回数
+  dialog_retry_count: 3           # ダイアログ復帰の最大リトライ回数
+  max_runtime_minutes: 60         # 最大稼働時間（分）
+
+dashboard:
+  host: "127.0.0.1"
+  port: 8080
+
+logging:
+  level: "DEBUG"
+  file: "logs/app.log"
+  max_bytes: 10485760             # 10MB
+  backup_count: 5
+  screenshot_dir: "logs/screenshots/"
+  screenshot_max_count: 100
