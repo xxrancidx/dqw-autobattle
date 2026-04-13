@@ -5,6 +5,7 @@ from __future__ import annotations
 import logging
 from enum import Enum, auto
 
+import cv2
 import numpy as np
 from numpy.typing import NDArray
 
@@ -79,7 +80,10 @@ class StateDetector:
         return ScreenState.UNKNOWN
 
     def find_enemy(self, screen: NDArray[np.uint8]) -> MatchResult | None:
-        """フィールド画面上の敵シンボルを検出する.
+        """フィールド画面上の敵シンボル（!吹き出し）を検出する.
+
+        全 enemy_symbol* テンプレートをマルチスケールで試行し、
+        マッチ位置にオレンジ色が含まれるか検証して誤検出を抑制する。
 
         Args:
             screen: キャプチャ画像の numpy 配列 (H, W, 3).
@@ -87,7 +91,35 @@ class StateDetector:
         Returns:
             敵シンボルのマッチ結果. 見つからない場合は None.
         """
-        return self._matcher.match(screen, "enemy_symbol")
+        enemy_templates = [
+            name for name in self._matcher.template_names
+            if name.startswith("enemy_symbol")
+        ]
+        if not enemy_templates:
+            logger.warning("enemy_symbol* テンプレートが見つかりません")
+            return None
+
+        # 全テンプレートの結果を収集し、オレンジ検証を通過したもののみ採用
+        candidates: list[MatchResult] = []
+        for name in enemy_templates:
+            result = self._matcher.match_multiscale(screen, name)
+            if result is not None:
+                if self._verify_orange(screen, result):
+                    candidates.append(result)
+                else:
+                    logger.debug(
+                        "オレンジ色検証失敗: %s score=%.3f pos=(%d,%d)",
+                        name,
+                        result.score,
+                        result.x,
+                        result.y,
+                    )
+
+        if not candidates:
+            return None
+
+        best = max(candidates, key=lambda r: r.score)
+        return best
 
     def find_enemies(self, screen: NDArray[np.uint8]) -> list[MatchResult]:
         """フィールド画面上の複数の敵シンボルを検出する.
@@ -99,6 +131,32 @@ class StateDetector:
             敵シンボルのマッチ結果リスト.
         """
         return self._matcher.match_multi(screen, "enemy_symbol")
+
+    @staticmethod
+    def _verify_orange(
+        screen: NDArray[np.uint8],
+        match: MatchResult,
+        min_ratio: float = 0.08,
+    ) -> bool:
+        """マッチ位置の周辺にオレンジ色が一定割合以上存在するか検証する."""
+        h, w = screen.shape[:2]
+        x0 = max(0, match.x - match.width // 2)
+        y0 = max(0, match.y - match.height // 2)
+        x1 = min(w, match.x + match.width // 2)
+        y1 = min(h, match.y + match.height // 2)
+
+        roi = screen[y0:y1, x0:x1]
+        if roi.size == 0:
+            return False
+
+        hsv = cv2.cvtColor(roi, cv2.COLOR_BGR2HSV)
+        # オレンジ色範囲: H=5-25, S>80, V>120
+        lower = np.array([5, 80, 120], dtype=np.uint8)
+        upper = np.array([25, 255, 255], dtype=np.uint8)
+        mask = cv2.inRange(hsv, lower, upper)
+        ratio = float(np.count_nonzero(mask)) / (roi.shape[0] * roi.shape[1])
+        logger.debug("オレンジ色検証: pos=(%d,%d) ratio=%.2f%%", match.x, match.y, ratio * 100)
+        return bool(ratio >= min_ratio)
 
     def find_dialog_button(self, screen: NDArray[np.uint8]) -> MatchResult | None:
         """ダイアログの OK / 閉じるボタンを検出する.

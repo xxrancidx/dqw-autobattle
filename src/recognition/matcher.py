@@ -51,6 +51,11 @@ class TemplateMatcher:
         self._threshold = threshold
         self._templates: dict[str, NDArray[np.uint8]] = {}
 
+    @property
+    def template_names(self) -> list[str]:
+        """読み込み済みテンプレート名のリストを返す."""
+        return list(self._templates.keys())
+
     def load_templates(self) -> None:
         """テンプレート画像をディレクトリから読み込む.
 
@@ -215,3 +220,59 @@ class TemplateMatcher:
             len(results),
         )
         return results
+
+    def match_multiscale(
+        self,
+        screen: NDArray[np.uint8],
+        template_name: str,
+        *,
+        scales: tuple[float, ...] = (0.7, 0.8, 0.9, 1.0, 1.1, 1.2, 1.3),
+    ) -> MatchResult | None:
+        """マルチスケールでテンプレートマッチングを行う.
+
+        Args:
+            screen: キャプチャ画像の numpy 配列 (H, W, 3).
+            template_name: マッチング対象のテンプレート名.
+            scales: 試行するスケールのタプル.
+
+        Returns:
+            全スケール中の最高スコアのマッチ結果. 閾値未満の場合は None.
+        """
+        tmpl = self._templates.get(template_name)
+        if tmpl is None:
+            logger.warning("テンプレート未登録: %s", template_name)
+            return None
+
+        th, tw = tmpl.shape[:2]
+        best: MatchResult | None = None
+
+        for scale in scales:
+            rw, rh = int(tw * scale), int(th * scale)
+            if rw < 5 or rh < 5 or rw > screen.shape[1] or rh > screen.shape[0]:
+                continue
+
+            resized = cv2.resize(tmpl, (rw, rh))
+            result = cv2.matchTemplate(screen, resized, cv2.TM_CCOEFF_NORMED)
+            _, max_val, _, max_loc = cv2.minMaxLoc(result)
+
+            if max_val >= self._threshold and (best is None or max_val > best.score):
+                cx = max_loc[0] + rw // 2
+                cy = max_loc[1] + rh // 2
+                best = MatchResult(
+                    template_name=template_name,
+                    score=float(max_val),
+                    x=cx,
+                    y=cy,
+                    width=rw,
+                    height=rh,
+                )
+
+        if best is not None:
+            logger.info(
+                "マルチスケールマッチング成功: %s score=%.3f pos=(%d,%d)",
+                template_name,
+                best.score,
+                best.x,
+                best.y,
+            )
+        return best

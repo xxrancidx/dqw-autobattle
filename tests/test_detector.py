@@ -44,7 +44,7 @@ class TestStateDetector:
             "walk_mode_off": (255, 0, 255),
             "field_menu": (0, 255, 255),
             "field_map": (128, 128, 128),
-            "enemy_symbol": (200, 100, 50),
+            "enemy_symbol": (47, 134, 220),  # BGR orange (HSV H=15)
         }
         for name, color in colors.items():
             img = create_template_image(50, 50, color)
